@@ -61,9 +61,10 @@ void main() {
             System.out.println();
             nosOfBytes = fc.read(buf);
         }
+
+        ref.close();
     }
     catch (Exception e){
         e.printStackTrace();
     }
-
 }
