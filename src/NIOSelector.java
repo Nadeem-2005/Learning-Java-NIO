@@ -1,10 +1,8 @@
 import java.io.IOException;
 
+import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.nio.channels.SelectableChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 
 /***
  * NOTE:- Only channels that extend SelectableChannel (network channels) can be used with a selector. FileChannel cant use SelectableChannel
@@ -14,15 +12,7 @@ import java.nio.channels.SocketChannel;
  * and thus multiple network connections.
  */
 
-public class NIOSelector {
-    static void main(String[] args) throws IOException {
-        Selector selector = Selector.open();
-
-        SocketChannel socketChannel = SocketChannel.open(),socketChannel2 = SocketChannel.open();
-        socketChannel.configureBlocking(false); socketChannel2.configureBlocking(false);
-
-
-        /***
+/***
          * The Channel must be in non-blocking mode to be used with a Selector.
          * This means that you cannot use FileChannel's with a Selector since FileChannel's cannot be switched into non-blocking mode.
          * Socket channels will work fine though.
@@ -47,19 +37,27 @@ public class NIOSelector {
          *      SelectionKey.OP_ACCEPT
          *      SelectionKey.OP_READ
          *      SelectionKey.OP_WRITE
-         */
+ */
 
-        SelectionKey key = socketChannel.register(selector, SelectionKey.OP_READ);
-//        For multiple events such as Connecting or Reading
-        SelectionKey key2 = socketChannel2.register(selector, SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+public class NIOSelector {
+    static void main(String[] args) throws IOException {
+        Selector selector = Selector.open();
 
-        selector.select();
+        //Creating a server channel
+        ServerSocketChannel server = ServerSocketChannel.open();
+        server.configureBlocking(false);
+        server.bind(new InetSocketAddress("localhost", 9000));
+        server.register(selector, SelectionKey.OP_ACCEPT);
 
-//        Ready set can be accessed by the following:
-        int readyOps = key.readyOps();
-        int readyOps2 = key2.readyOps();
-        System.out.println("readyOps: " + readyOps + " readyOps2: " + readyOps2);
+        //creating a client
+        SocketChannel client = SocketChannel.open();
+        client.configureBlocking(false);
+        client.connect(new InetSocketAddress("localhost", 9000));
+        client.register(selector, SelectionKey.OP_READ);
 
+        //event loop
+        while(true){
 
+        }
     }
 }
