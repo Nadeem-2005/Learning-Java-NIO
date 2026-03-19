@@ -62,7 +62,7 @@ public class NIOSelector {
             selector.select(); //blocks until one channel is ready
 
             //selector.selectedKeys will return a set of keys that are associated with that particular selector that are ready for an event
-            //for example, even if a selector is to monitor a 1000 channels, if only 3 are ready for event, then the size of the set will be 3.
+            //for example, even if a selector is to monitor  1000 channels, if only 3 are ready for event, then the size of the set will be 3.
             Iterator<SelectionKey> iter = selector.selectedKeys().iterator();
 
             while(iter.hasNext()){
@@ -70,7 +70,7 @@ public class NIOSelector {
                 iter.remove();
 
                 if(key.isAcceptable()){
-                    // if a key is ready to accept event (i.e.., a server), then we expose a new channel for our client to write into
+                    // if a key is ready to accept event (i.e., a server), then we expose a new channel for our client to write into
                     SocketChannel writeChannel = server.accept();
                     writeChannel.configureBlocking(false);
                     writeChannel.register(selector, SelectionKey.OP_READ);
@@ -86,14 +86,14 @@ public class NIOSelector {
                     // once client is connected to server, switching it to write mode so that it can write to the channel exposed by the server
                     key.interestOps(SelectionKey.OP_WRITE);
 
-                    System.out.println("Client has connected succesfully");
+                    System.out.println("Client has connected successfully");
                 }
                 else if (key.isWritable()){
                     SocketChannel readyClient = (SocketChannel) key.channel();
                     //forms a tcp connection and automatically writes to writeChannel exposed by server.
                     readyClient.write(ByteBuffer.wrap("Hello server, Client here.".getBytes()));
 
-                    //the client is put into read event because, if this isnt done so, the selectro keeps thinking it wants to write
+                    //the client is put into read event because, if this isn't done so, the selector keeps thinking it wants to write
                     key.interestOps(SelectionKey.OP_READ);
                     System.out.println("Client has sent a message.");
                 }
