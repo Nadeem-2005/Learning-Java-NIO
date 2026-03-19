@@ -58,6 +58,16 @@ public class NIOSelector {
         client.register(selector, SelectionKey.OP_CONNECT);
 
         //event loop
+        /***
+         * When selector.select() wakes up, the iterator you get is a snapshot of that exact moment ,
+         * it won't update mid-loop even if you register new channels inside it.
+         * So in the first loop iteration, the iterator only has OP_ACCEPT and OP_CONNECT. Inside isAcceptable(),
+         * you register writeChannel for OP_READ, but that doesn't add it to the current iterator ,it just tells the selector "watch this from now on".
+         * The current loop finishes, then selector.select() is called again for the second iteration where the iterator only has OP_WRITE for the client, which sends the message and switches to OP_READ.
+         * Then selector.select() is called a third time, and now writeChannel shows up in the iterator for the first time because data has actually arrived on it ,
+         * this is when isReadable() fires and you read "Hello Server" from it.
+         * So writeChannel was never in the first iterator, it just quietly gets added to the selector's watch list and only surfaces in a future select() call when it actually has data ready.
+         */
         while(true){
             selector.select(); //blocks until one channel is ready
 
