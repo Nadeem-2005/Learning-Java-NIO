@@ -2,7 +2,9 @@ import java.io.IOException;
 
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.util.Iterator;
 
 /***
  * NOTE:- Only channels that extend SelectableChannel (network channels) can be used with a selector. FileChannel cant use SelectableChannel
@@ -53,11 +55,66 @@ public class NIOSelector {
         SocketChannel client = SocketChannel.open();
         client.configureBlocking(false);
         client.connect(new InetSocketAddress("localhost", 9000));
-        client.register(selector, SelectionKey.OP_READ);
+        client.register(selector, SelectionKey.OP_CONNECT);
 
         //event loop
         while(true){
+            selector.select(); //blocks until one channel is ready
 
+            //selector.selectedKeys will return a set of keys that are associated with that particular selector that are ready for an event
+            //for example, even if a selector is to monitor a 1000 channels, if only 3 are ready for event, then the size of the set will be 3.
+            Iterator<SelectionKey> iter = selector.selectedKeys().iterator();
+
+            while(iter.hasNext()){
+                SelectionKey key = iter.next();
+                iter.remove();
+
+                if(key.isAcceptable()){
+                    // if a key is ready to accept event (i.e.., a server), then we expose a new channel for our client to write into
+                    SocketChannel writeChannel = server.accept();
+                    writeChannel.configureBlocking(false);
+                    writeChannel.register(selector, SelectionKey.OP_READ);
+                    System.out.println("Server has accepted a new connection from " + writeChannel.getRemoteAddress());
+
+                }
+                else if(key.isConnectable()){
+                    //if a key is ready for a connection event , then
+                    // getting the channel that is ready to establish a connection which in our case, is our single client
+                    SocketChannel readyClient = (SocketChannel) key.channel();
+                    //finishes connection handshake
+                    readyClient.finishConnect();
+                    // once client is connected to server, switching it to write mode so that it can write to the channel exposed by the server
+                    key.interestOps(SelectionKey.OP_WRITE);
+
+                    System.out.println("Client has connected succesfully");
+                }
+                else if (key.isWritable()){
+                    SocketChannel readyClient = (SocketChannel) key.channel();
+                    //forms a tcp connection and automatically writes to writeChannel exposed by server.
+                    readyClient.write(ByteBuffer.wrap("Hello server, Client here.".getBytes()));
+
+                    //the client is put into read event because, if this isnt done so, the selectro keeps thinking it wants to write
+                    key.interestOps(SelectionKey.OP_READ);
+                    System.out.println("Client has sent a message.");
+                }
+                else if (key.isReadable()){
+                    SocketChannel channel = (SocketChannel) key.channel();
+                    ByteBuffer readBuffer = ByteBuffer.allocate(1024);
+                    int bytes = channel.read(readBuffer);
+                    if (bytes > 0){
+                        readBuffer.flip();
+
+                        while(readBuffer.hasRemaining()){
+                            System.out.print((char)readBuffer.get());
+                        }
+                    }
+                    key.cancel();
+                    selector.close();
+                    server.close();
+                    return;
+
+                }
+            }
         }
     }
 }
